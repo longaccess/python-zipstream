@@ -216,9 +216,12 @@ class ZipFile(zipfile.ZipFile):
                   "Attempt to write to ZIP archive that was already closed")
 
         fp = None
-        if hasattr(filename, 'fileno'):
+        if hasattr(filename, 'read'):
             fp = filename
-            st = os.fstat(filename.fileno())
+            if hasattr(filename, 'fileno'):
+                st = os.fstat(filename.fileno())
+            else:
+                st = os.fstat(0)
             if arcname is None:
                 arcname = '<stream>'
         else:
