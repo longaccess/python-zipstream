@@ -215,7 +215,16 @@ class ZipFile(zipfile.ZipFile):
             raise RuntimeError(
                   "Attempt to write to ZIP archive that was already closed")
 
-        st = os.stat(filename)
+        fp = None
+        if hasattr(filename, 'fileno'):
+            fp = filename
+            st = os.fstat(filename.fileno())
+            if arcname is None:
+                arcname = '<stream>'
+        else:
+            fp = open(filename, 'rb')
+            st = os.stat(filename)
+
         isdir = stat.S_ISDIR(st.st_mode)
         mtime = time.localtime(st.st_mtime)
         date_time = mtime[0:6]
@@ -255,7 +264,7 @@ class ZipFile(zipfile.ZipFile):
             return
 
         cmpr = _get_compressor(zinfo.compress_type)
-        with open(filename, 'rb') as fp:
+        with fp:
             # Must overwrite CRC and sizes with correct data later
             zinfo.CRC = CRC = 0
             zinfo.compress_size = compress_size = 0
