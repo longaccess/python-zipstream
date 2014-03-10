@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import zipstream
 import zipfile
+import socket
 
 
 class ZipInfoTestCase(unittest.TestCase):
@@ -53,6 +54,42 @@ class ZipStreamTestCase(unittest.TestCase):
         z2.testzip()
 
         os.remove(f.name)
+
+    def test_write_fp(self):
+        z = zipstream.ZipFile(mode='w')
+        for fileobj in self.fileobjs:
+            z.write(fileobj)
+
+        f = tempfile.NamedTemporaryFile(suffix='zip', delete=False)
+        for chunk in z:
+            f.write(chunk)
+        f.close()
+
+        z2 = zipfile.ZipFile(f.name, 'r')
+        z2.testzip()
+
+        os.remove(f.name)
+
+    @unittest.skipUnless(os.name == "posix", "requires POSIX")
+    def test_write_socket(self):
+        z = zipstream.ZipFile(mode='w')
+        s, c = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            s.send("FILE CONTENTS")
+            z.write(c.makefile())
+            s.close()
+
+            f = tempfile.NamedTemporaryFile(suffix='zip', delete=False)
+            for chunk in z:
+                f.write(chunk)
+            f.close()
+
+            z2 = zipfile.ZipFile(f.name, 'r')
+            z2.testzip()
+
+            os.remove(f.name)
+        finally:
+            c.close()
 
 
 if __name__ == '__main__':
