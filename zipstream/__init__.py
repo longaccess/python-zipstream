@@ -227,6 +227,8 @@ class ZipFile(zipfile.ZipFile):
 
         isdir = stat.S_ISDIR(st.st_mode)
         mtime = time.localtime(st.st_mtime)
+        if (mtime.tm_year < 1980):
+            mtime = time.localtime()
         date_time = mtime[0:6]
         # Create ZipInfo instance to store file information
         if arcname is None:
