@@ -218,9 +218,9 @@ class ZipFile(zipfile.ZipFile):
         fp = None
         if hasattr(filename, 'read'):
             fp = filename
-            if hasattr(filename, 'fileno'):
+            try:
                 st = os.fstat(filename.fileno())
-            else:
+            except Exception:
                 st = os.fstat(0)
             if arcname is None:
                 arcname = '<stream>'
