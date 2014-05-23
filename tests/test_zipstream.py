@@ -87,8 +87,12 @@ class ZipStreamTestCase(unittest.TestCase):
         s, c = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             txt = "FILE CONTENTS"
-            s.send(txt.encode("utf-8"))
-            z.write(c.makefile())
+            s.send(txt.encode("ascii"))
+            try:
+                inf = c.makefile(mode='b')
+            except TypeError:
+                inf = c.makefile()
+            z.write(inf)
             s.close()
 
             f = tempfile.NamedTemporaryFile(suffix='zip', delete=False)
