@@ -282,6 +282,7 @@ class ZipFile(zipfile.ZipFile):
                 buf = fp.read(1024 * 8)
                 if not buf:
                     break
+                buf = buf.encode('utf-8')  # ensure we have bytes
                 file_size = file_size + len(buf)
                 CRC = crc32(buf, CRC) & 0xffffffff
                 if cmpr:
