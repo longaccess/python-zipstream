@@ -75,7 +75,8 @@ class ZipStreamTestCase(unittest.TestCase):
         z = zipstream.ZipFile(mode='w')
         s, c = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            s.send("FILE CONTENTS")
+            txt = "FILE CONTENTS"
+            s.send(txt.encode("utf-8"))
             z.write(c.makefile())
             s.close()
 
