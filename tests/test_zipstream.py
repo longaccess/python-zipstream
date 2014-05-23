@@ -7,6 +7,17 @@ import unittest
 import zipstream
 import zipfile
 import socket
+import functools
+from nose.plugins.skip import SkipTest
+
+
+def skipIfNotPosix(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        if os.name == "posix":
+            return f(*args, **kwargs)
+        raise SkipTest("requires POSIX")
+    return wrapper
 
 
 class ZipInfoTestCase(unittest.TestCase):
@@ -70,7 +81,7 @@ class ZipStreamTestCase(unittest.TestCase):
 
         os.remove(f.name)
 
-    @unittest.skipUnless(os.name == "posix", "requires POSIX")
+    @skipIfNotPosix
     def test_write_socket(self):
         z = zipstream.ZipFile(mode='w')
         s, c = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
