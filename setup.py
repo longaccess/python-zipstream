@@ -4,7 +4,7 @@ import zipstream
 
 
 setup(
-    name='zipstream',
+    name='zipstream-longaccess',
     version=zipstream.__version__,
     description='Zipfile generator',
     author='Allan Lei',
