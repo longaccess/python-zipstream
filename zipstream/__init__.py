@@ -208,7 +208,7 @@ class ZipFile(zipfile.ZipFile):
             ((filename, ), {'arcname': arcname, 'compress_type': compress_type}),
         )
 
-    def __write(self, filename, arcname=None, compress_type=None):
+    def __write(self, filename, arcname=None, compress_type=None, size=None):
         """Put the bytes from filename into the archive under the name
         arcname."""
         if not self.fp:
@@ -248,7 +248,7 @@ class ZipFile(zipfile.ZipFile):
         else:
             zinfo.compress_type = compress_type
 
-        zinfo.file_size = st.st_size
+        zinfo.file_size = size or st.st_size
         zinfo.flag_bits = 0x00
         zinfo.flag_bits |= 0x08                 # ZIP flag bits, bit 3 indicates presence of data descriptor
         zinfo.header_offset = self.fp.tell()    # Start of header bytes
@@ -279,7 +279,12 @@ class ZipFile(zipfile.ZipFile):
             yield self.fp.write(zinfo.FileHeader(zip64))
             file_size = 0
             while 1:
-                buf = fp.read(1024 * 8)
+                sz = 1024 * 8
+                if zinfo.file_size > 0:  # known size, read only that much
+                    if zinfo.file_size == file_size:
+                        break
+                    sz = min(zinfo.file_size - file_size, sz)
+                buf = fp.read(sz)
                 if not buf:
                     break
                 file_size = file_size + len(buf)
@@ -296,6 +301,8 @@ class ZipFile(zipfile.ZipFile):
         else:
             zinfo.compress_size = file_size
         zinfo.CRC = CRC
+        if zinfo.file_size > 0 and zinfo.file_size != file_size:
+            raise RuntimeError('File size changed during compressing')
         zinfo.file_size = file_size
         if not zip64 and self._allowZip64:
             if file_size > ZIP64_LIMIT:
