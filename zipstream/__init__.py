@@ -303,7 +303,8 @@ class ZipFile(zipfile.ZipFile):
         zinfo.CRC = CRC
         if zinfo.file_size > 0 and zinfo.file_size != file_size:
             raise RuntimeError('File size changed during compressing')
-        zinfo.file_size = file_size
+        else:
+            zinfo.file_size = file_size
         if not zip64 and self._allowZip64:
             if file_size > ZIP64_LIMIT:
                 raise RuntimeError('File size has increased during compressing')
