@@ -89,7 +89,7 @@ class ZipStreamTestCase(unittest.TestCase):
             txt = "FILE CONTENTS"
             s.send(txt.encode("ascii"))
             try:
-                inf = c.makefile(mode='b')
+                inf = c.makefile(mode='rb')
             except TypeError:
                 inf = c.makefile()
             z.write(inf)
