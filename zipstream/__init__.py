@@ -16,7 +16,7 @@ import time
 import zipfile
 
 from .compat import (
-    str, bytes,
+    str, bytes, basestring,
     ZIP64_VERSION,
     ZIP_BZIP2, BZIP2_VERSION, 
     ZIP_LZMA, LZMA_VERSION)
@@ -30,6 +30,19 @@ from zipfile import (
     zlib, crc32)
 
 stringDataDescriptor = b'PK\x07\x08' # magic number for data descriptor
+
+
+def _stream_stat(mtime, isdir, size):
+    st = [0]*10
+    st[0] = stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH  # mode
+    st[7] = st[8] = st[9] = 315532800                   # times
+    if isdir is True:
+        st[0] |= stat.S_IFDIR
+    if size is not None:
+        st[6] = size
+    if mtime is not None:
+        st[8] = mtime
+    return os.stat_result(st)
 
 
 def _get_compressor(compress_type):
@@ -208,25 +221,27 @@ class ZipFile(zipfile.ZipFile):
             ((filename, ), {'arcname': arcname, 'compress_type': compress_type}),
         )
 
-    def __write(self, filename, arcname=None, compress_type=None, size=None):
+    def write_stream(self, fp, arcname=None, compress_type=None,
+                     mtime=None, isdir=None, size=None):
+        self.paths_to_write.append(
+            ((fp, ), {'arcname': arcname, 'compress_type': compress_type,
+                      'st': _stream_stat(mtime, isdir, size)}),
+        )
+
+
+    def __write(self, fp, arcname=None, compress_type=None, st=None):
         """Put the bytes from filename into the archive under the name
         arcname."""
         if not self.fp:
             raise RuntimeError(
                   "Attempt to write to ZIP archive that was already closed")
 
-        fp = None
-        if hasattr(filename, 'read'):
-            fp = filename
-            try:
-                st = os.fstat(filename.fileno())
-            except Exception:
-                st = os.fstat(0)
-            if arcname is None:
-                arcname = '<stream>'
+        if isinstance(fp, basestring):
+            filename, fp = (fp, None)
+            st = st or os.stat(filename)
         else:
-            fp = open(filename, 'rb')
-            st = os.stat(filename)
+            filename = '<stream>'
+            st = st or os.stat(0)
 
         isdir = stat.S_ISDIR(st.st_mode)
         mtime = time.localtime(st.st_mtime)
@@ -248,7 +263,7 @@ class ZipFile(zipfile.ZipFile):
         else:
             zinfo.compress_type = compress_type
 
-        zinfo.file_size = size or st.st_size
+        zinfo.file_size = st.st_size
         zinfo.flag_bits = 0x00
         zinfo.flag_bits |= 0x08                 # ZIP flag bits, bit 3 indicates presence of data descriptor
         zinfo.header_offset = self.fp.tell()    # Start of header bytes
@@ -269,6 +284,7 @@ class ZipFile(zipfile.ZipFile):
             return
 
         cmpr = _get_compressor(zinfo.compress_type)
+        fp = fp or open(filename, 'rb')
         with fp:
             # Must overwrite CRC and sizes with correct data later
             zinfo.CRC = CRC = 0
