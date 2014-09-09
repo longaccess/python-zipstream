@@ -69,7 +69,7 @@ class ZipStreamTestCase(unittest.TestCase):
     def test_write_fp(self):
         z = zipstream.ZipFile(mode='w')
         for fileobj in self.fileobjs:
-            z.write(fileobj)
+            z.write_stream(fileobj)
 
         f = tempfile.NamedTemporaryFile(suffix='zip', delete=False)
         for chunk in z:
@@ -78,6 +78,37 @@ class ZipStreamTestCase(unittest.TestCase):
 
         z2 = zipfile.ZipFile(f.name, 'r')
         z2.testzip()
+
+        os.remove(f.name)
+
+    def test_write_fp_with_stat(self):
+        z = zipstream.ZipFile(mode='w')
+        # test mtime
+        z.write_stream(self.fileobjs[0], arcname="mtime",
+            mtime=315532900)
+
+        # test with a specific file size
+        fdata = tempfile.NamedTemporaryFile(suffix='.data')
+        fdata.write(" "*15)
+        fdata.seek(0)
+        z.write_stream(fdata, arcname="size", size=15)
+
+        # test isdir
+        z.write_stream(None, arcname="isdir", isdir=True)
+
+        f = tempfile.NamedTemporaryFile(suffix='zip', delete=False)
+        for chunk in z:
+            f.write(chunk)
+        f.close()
+        fdata.close()
+
+        z2 = zipfile.ZipFile(f.name, 'r')
+        z2.testzip()
+        self.assertEqual(
+            [zi.filename for zi in z2.filelist],
+            ['mtime', 'size', 'isdir/'])
+        self.assertEqual(z2.filelist[0].date_time[5], 40)
+        self.assertEqual(z2.filelist[1].file_size, 15)
 
         os.remove(f.name)
 
@@ -92,7 +123,7 @@ class ZipStreamTestCase(unittest.TestCase):
                 inf = c.makefile(mode='rb')
             except TypeError:
                 inf = c.makefile()
-            z.write(inf)
+            z.write_stream(inf)
             s.close()
 
             f = tempfile.NamedTemporaryFile(suffix='zip', delete=False)
